@@ -58,7 +58,7 @@ public class RhythmManager : MonoBehaviour
     private int combo = 0;
     private int maxCombo = 0;
 
-    public AudioSource audioSource; // 効果音再生用
+    public AudioSource seSource; // 効果音再生用
     public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
 
     public double GetStartDsp()
@@ -312,7 +312,7 @@ public class RhythmManager : MonoBehaviour
     // 便利ヘルパー（HitJudgeから参照する場合）
     public double GetSongTime()
     {
-        if (audioSource != null && audioSource.clip != null)
+        if (seSource != null && seSource.clip != null)
             return Math.Max(0, AudioSettings.dspTime - dspStartTime);
         else
             return Math.Max(0, Time.time - fallbackStartTime);
@@ -320,9 +320,9 @@ public class RhythmManager : MonoBehaviour
 
     public void PlayLaneSE(int lane)
     {
-        if (audioSource != null && lane < seClips.Length && seClips[lane] != null)
+        if (seSource != null && lane < seClips.Length && seClips[lane] != null)
         {
-            audioSource.PlayOneShot(seClips[lane]);
+            seSource.PlayOneShot(seClips[lane]);
         }
     }
 }
