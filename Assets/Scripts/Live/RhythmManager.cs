@@ -1,10 +1,12 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.Video;
 
 [Serializable]
 public class NoteData
@@ -26,6 +28,7 @@ public class RhythmManager : MonoBehaviour
 {
     [Header("Refs")]
     public AudioSource audioSource;
+    public VideoPlayer videoPlayer;
     public RectTransform playArea; // Canvas内 ノーツを流す親
     public GameObject notePrefab;
 
@@ -39,6 +42,7 @@ public class RhythmManager : MonoBehaviour
     private double dspStartTime;
     private float fallbackStartTime; // クリップが無い時の保険
     private Queue<Note>[] laneQueues = new Queue<Note>[3]; // ← 3レーン
+    private bool _videoSyncActive = false; // 映像同期フラグ
 
     // 判定ウィンドウ（秒）
     [Header("Judge Windows (sec)")]
@@ -94,10 +98,17 @@ public class RhythmManager : MonoBehaviour
         Debug.Log($"[Rhythm] 読み込みOK: notes={chart.notes.Count}, offset={chart.offset}");
 
         // 再生準備（AudioClipが無い場合はフォールバック）
+        // ① 動画の準備開始
+        if (videoPlayer)
+            videoPlayer.Prepare();
+
+        // ② 再生開始時刻を決定（0.2秒後など）
         double startDelay = 0.2;
-        if (audioSource != null && audioSource.clip != null)
+        dspStartTime = AudioSettings.dspTime + startDelay;
+
+        // ③ BGMを高精度に予約再生
+        if (audioSource && audioSource.clip)
         {
-            dspStartTime = AudioSettings.dspTime + startDelay;
             audioSource.PlayScheduled(dspStartTime);
             Debug.Log("[Rhythm] Audio scheduled start at " + dspStartTime.ToString("F3"));
         }
@@ -107,9 +118,40 @@ public class RhythmManager : MonoBehaviour
             Debug.LogWarning("[Rhythm] AudioClip 未設定。Time.time ベースで進行します（暫定）");
         }
 
+        // ④ 動画も同時にスタートするコルーチン
+        StartCoroutine(CoStartVideoAtDSP(dspStartTime));
+
         for (int i = 0; i < laneQueues.Length; i++)
             laneQueues[i] = new Queue<Note>();
+
         UpdateUI();
+    }
+
+    IEnumerator CoStartVideoAtDSP(double dspTime)
+    {
+        if (videoPlayer)
+        {
+            while (!videoPlayer.isPrepared)
+                yield return null;
+            videoPlayer.time = 0.0; // 念のため先頭へ
+            videoPlayer.Play(); // External Timeでも必要
+        }
+
+        // DSP開始まで待機
+        while (AudioSettings.dspTime < dspTime)
+            yield return null;
+
+        // 同期駆動フラグON
+        _videoSyncActive = true;
+    }
+
+    // 便利ヘルパー（HitJudgeから参照する場合）
+    public double GetSongTime()
+    {
+        if (seSource != null && seSource.clip != null)
+            return Math.Max(0, AudioSettings.dspTime - dspStartTime);
+        else
+            return Math.Max(0, Time.time - fallbackStartTime);
     }
 
     void Update()
@@ -159,6 +201,13 @@ public class RhythmManager : MonoBehaviour
 
                 RegisterJudge("Miss", 0, resetCombo: true);
             }
+        }
+
+        // 外部時間で動画を同期駆動
+        if (_videoSyncActive && videoPlayer)
+        {
+            double t = AudioSettings.dspTime - dspStartTime;
+            videoPlayer.externalReferenceTime = Mathf.Max(0f, (float)t);
         }
 
         // キーボードでの判定
@@ -309,15 +358,6 @@ public class RhythmManager : MonoBehaviour
             scoreText.text = $"Score: {score}";
         if (comboText)
             comboText.text = combo > 0 ? $"Combo: {combo}" : "";
-    }
-
-    // 便利ヘルパー（HitJudgeから参照する場合）
-    public double GetSongTime()
-    {
-        if (seSource != null && seSource.clip != null)
-            return Math.Max(0, AudioSettings.dspTime - dspStartTime);
-        else
-            return Math.Max(0, Time.time - fallbackStartTime);
     }
 
     public void PlayLaneSE(int lane)
