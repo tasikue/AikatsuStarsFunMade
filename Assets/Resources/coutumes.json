@@ -1,0 +1,18 @@
+{
+    "costumes": [
+      {
+        "id": "c001",
+        "name": "ピンクドレス",
+        "brand": "Sprinkle",
+        "type": "キュート",
+        "imagePath": "Images/costume_pink"
+      },
+      {
+        "id": "c002",
+        "name": "ブルースーツ",
+        "brand": "CoolStar",
+        "type": "クール",
+        "imagePath": "Images/costume_blue"
+      }
+    ]
+  }
