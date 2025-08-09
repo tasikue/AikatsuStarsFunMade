@@ -61,6 +61,9 @@ public class RhythmManager : MonoBehaviour
     public AudioSource seSource; // 効果音再生用
     public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
 
+    public JudgeFeedback judgeFX;
+    public TargetPulse[] targets = new TargetPulse[3]; // Inspectorで Target0~2 を割当
+
     public double GetStartDsp()
     {
         return dspStartTime;
@@ -277,27 +280,26 @@ public class RhythmManager : MonoBehaviour
 
     void Hit(Note head, int lane, string label, int add, bool resetCombo = false)
     {
-        // 先にDequeue
         laneQueues[lane].Dequeue();
-        // それからDestroy（すでに消えていても安全）
         var go = head ? head.gameObject : null;
         if (go)
             Destroy(go);
 
+        if (lane >= 0 && lane < targets.Length && targets[lane])
+            targets[lane].Pulse(); // ← 追加
         RegisterJudge(label, add, resetCombo);
     }
 
     void RegisterJudge(string label, int add, bool resetCombo = false)
     {
         score += add;
-        if (resetCombo)
-            combo = 0;
-        else
-            combo++;
-
+        combo = resetCombo ? 0 : combo + 1;
         maxCombo = Mathf.Max(maxCombo, combo);
         if (judgeText)
             judgeText.text = label;
+        if (judgeFX)
+            judgeFX.Show(label); // ← 追加
+
         UpdateUI();
     }
 
