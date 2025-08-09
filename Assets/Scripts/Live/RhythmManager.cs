@@ -1,17 +1,21 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.InputSystem;
 using System.Linq;
 using TMPro;
-
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 [Serializable]
-public class NoteData { public float time; public int lane; }
+public class NoteData
+{
+    public float time;
+    public int lane;
+}
 
 [Serializable]
-public class ChartData {
+public class ChartData
+{
     public string song;
     public float bpm;
     public float offset;
@@ -22,13 +26,13 @@ public class RhythmManager : MonoBehaviour
 {
     [Header("Refs")]
     public AudioSource audioSource;
-    public RectTransform playArea;     // Canvas内 ノーツを流す親
+    public RectTransform playArea; // Canvas内 ノーツを流す親
     public GameObject notePrefab;
 
     [Header("Scroll")]
-    public float spawnY = 400f;        // 出現位置Y（上）
-    public float hitY = -200f;         // 判定ラインY（下）
-    public float noteTravelTime = 1.0f;// 出現→判定ラインまでの所要時間(秒)
+    public float spawnY = 400f; // 出現位置Y（上）
+    public float hitY = -200f; // 判定ラインY（下）
+    public float noteTravelTime = 1.0f; // 出現→判定ラインまでの所要時間(秒)
 
     private ChartData chart;
     private int spawnIndex = 0;
@@ -39,9 +43,9 @@ public class RhythmManager : MonoBehaviour
     // 判定ウィンドウ（秒）
     [Header("Judge Windows (sec)")]
     public float perfect = 0.050f;
-    public float great   = 0.090f;
-    public float good    = 0.140f;
-    public float bad     = 0.200f; // これを超えたらMiss
+    public float great = 0.090f;
+    public float good = 0.140f;
+    public float bad = 0.200f; // これを超えたらMiss
 
     // スコアUI（Text でも TextMeshProUGUIでもOK）
     [Header("UI")]
@@ -54,18 +58,23 @@ public class RhythmManager : MonoBehaviour
     private int combo = 0;
     private int maxCombo = 0;
 
+    public AudioSource audioSource; // 効果音再生用
+    public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
+
     public double GetStartDsp()
     {
-    return dspStartTime;
+        return dspStartTime;
     }
 
     void Start()
     {
         // 譜面読み込み
         TextAsset json = Resources.Load<TextAsset>("Charts/sample_chart");
-         if (json == null)
+        if (json == null)
         {
-            Debug.LogError("[Rhythm] sample_chart.json が見つかりません（Assets/Resources/Charts/ に配置・拡張子.json）");
+            Debug.LogError(
+                "[Rhythm] sample_chart.json が見つかりません（Assets/Resources/Charts/ に配置・拡張子.json）"
+            );
             enabled = false;
             return;
         }
@@ -78,7 +87,7 @@ public class RhythmManager : MonoBehaviour
             return;
         }
 
-        chart.notes.Sort((a,b) => a.time.CompareTo(b.time));
+        chart.notes.Sort((a, b) => a.time.CompareTo(b.time));
         Debug.Log($"[Rhythm] 読み込みOK: notes={chart.notes.Count}, offset={chart.offset}");
 
         // 再生準備（AudioClipが無い場合はフォールバック）
@@ -95,55 +104,79 @@ public class RhythmManager : MonoBehaviour
             Debug.LogWarning("[Rhythm] AudioClip 未設定。Time.time ベースで進行します（暫定）");
         }
 
-        for (int i = 0; i < laneQueues.Length; i++) laneQueues[i] = new Queue<Note>();
-    UpdateUI();
+        for (int i = 0; i < laneQueues.Length; i++)
+            laneQueues[i] = new Queue<Note>();
+        UpdateUI();
     }
 
     void Update()
     {
         double songTime = GetSongTime();
 
-    // 生成ループ(既存)
-    while (chart != null && spawnIndex < chart.notes.Count)
-    {
-        var n = chart.notes[spawnIndex];
-        double spawnAt = n.time - noteTravelTime - chart.offset;
-        if (songTime >= spawnAt) { SpawnNote(n); spawnIndex++; }
-        else break;
-    }
+        // 生成ループ(既存)
+        while (chart != null && spawnIndex < chart.notes.Count)
+        {
+            var n = chart.notes[spawnIndex];
+            double spawnAt = n.time - noteTravelTime - chart.offset;
+            if (songTime >= spawnAt)
+            {
+                SpawnNote(n);
+                spawnIndex++;
+            }
+            else
+                break;
+        }
 
-    // 遅延Miss処理：先頭が判定窓を超えたらMiss
-   for (int lane = 0; lane < laneQueues.Length; lane++)
-{
-    // 先に null 化された要素を掃除
-    while (laneQueues[lane].Count > 0 && laneQueues[lane].Peek() == null)
-        laneQueues[lane].Dequeue();
+        // 遅延Miss処理：先頭が判定窓を超えたらMiss
+        for (int lane = 0; lane < laneQueues.Length; lane++)
+        {
+            // 先に null 化された要素を掃除
+            while (laneQueues[lane].Count > 0 && laneQueues[lane].Peek() == null)
+                laneQueues[lane].Dequeue();
 
-    if (laneQueues[lane].Count == 0) continue;
+            if (laneQueues[lane].Count == 0)
+                continue;
 
-    var head = laneQueues[lane].Peek();
-    if (head == null) { laneQueues[lane].Dequeue(); continue; } // 念のため
+            var head = laneQueues[lane].Peek();
+            if (head == null)
+            {
+                laneQueues[lane].Dequeue();
+                continue;
+            } // 念のため
 
-    double diff = songTime - head.time;
+            double diff = songTime - head.time;
 
-    if (diff > bad) // 遅すぎ → Miss
-    {
-        // 先にキューから外す → それからDestroy
-        laneQueues[lane].Dequeue();
-        var go = head.gameObject;
-        if (go) Destroy(go);
+            if (diff > bad) // 遅すぎ → Miss
+            {
+                // 先にキューから外す → それからDestroy
+                laneQueues[lane].Dequeue();
+                var go = head.gameObject;
+                if (go)
+                    Destroy(go);
 
-        RegisterJudge("Miss", 0, resetCombo: true);
-    }
-}
+                RegisterJudge("Miss", 0, resetCombo: true);
+            }
+        }
 
-// キーボード操作
-if (Keyboard.current != null) {
-    if (Keyboard.current.aKey.wasPressedThisFrame) TryHit(0);
-    if (Keyboard.current.sKey.wasPressedThisFrame) TryHit(1);
-    if (Keyboard.current.dKey.wasPressedThisFrame) TryHit(2);
-}
-
+        // キーボードでの判定
+        if (Keyboard.current != null) // 新Input Systemの場合
+        {
+            if (Keyboard.current.aKey.wasPressedThisFrame)
+            {
+                TryHit(0);
+                PlayLaneSE(0);
+            }
+            if (Keyboard.current.sKey.wasPressedThisFrame)
+            {
+                TryHit(1);
+                PlayLaneSE(1);
+            }
+            if (Keyboard.current.dKey.wasPressedThisFrame)
+            {
+                TryHit(2);
+                PlayLaneSE(2);
+            }
+        }
     }
 
     void SpawnNote(NoteData n)
@@ -157,43 +190,44 @@ if (Keyboard.current != null) {
         }
 
         var rect = playArea.rect;
-    float laneWidth = rect.width;
-    float xStart = -laneWidth * 0.5f;
-    int laneCount = laneQueues.Length; // 3
-    float x = xStart + (n.lane + 0.5f) * (laneWidth / laneCount);
+        float laneWidth = rect.width;
+        float xStart = -laneWidth * 0.5f;
+        int laneCount = laneQueues.Length; // 3
+        float x = xStart + (n.lane + 0.5f) * (laneWidth / laneCount);
 
-    float sy = (spawnY != 0f) ? spawnY : rect.height * 0.5f - 20f;
-    float hy = (hitY   != 0f) ? hitY   : -rect.height * 0.5f + 200f;
+        float sy = (spawnY != 0f) ? spawnY : rect.height * 0.5f - 20f;
+        float hy = (hitY != 0f) ? hitY : -rect.height * 0.5f + 200f;
 
-    rt.anchoredPosition = new Vector2(x, sy);
+        rt.anchoredPosition = new Vector2(x, sy);
 
-    // Note情報を付与
-    var note = go.GetComponent<Note>();
-    if (note == null) note = go.AddComponent<Note>();
-    note.lane = n.lane;
-    note.time = n.time;
-    note.Init(this);    
+        // Note情報を付与
+        var note = go.GetComponent<Note>();
+        if (note == null)
+            note = go.AddComponent<Note>();
+        note.lane = n.lane;
+        note.time = n.time;
+        note.Init(this);
 
-    // レーンキューへ
-    laneQueues[n.lane].Enqueue(note);
+        // レーンキューへ
+        laneQueues[n.lane].Enqueue(note);
 
-   // 落下開始：note側でStartCoroutine（Destroyと同時に止まる）
-note.StartCoroutine(CoMove(rt, new Vector2(x, hy), noteTravelTime));
-
-    
+        // 落下開始：note側でStartCoroutine（Destroyと同時に止まる）
+        note.StartCoroutine(CoMove(rt, new Vector2(x, hy), noteTravelTime));
     }
 
-   System.Collections.IEnumerator CoMove(RectTransform rt, Vector2 target, float duration)
+    System.Collections.IEnumerator CoMove(RectTransform rt, Vector2 target, float duration)
     {
-         if (!rt) yield break;
+        if (!rt)
+            yield break;
 
         Vector2 start = rt.anchoredPosition;
         float t = 0f;
         while (t < duration)
         {
             // ここで毎フレーム生存確認
-        if (!rt) yield break;
-        
+            if (!rt)
+                yield break;
+
             t += Time.deltaTime;
             float k = Mathf.Clamp01(t / duration);
             rt.anchoredPosition = Vector2.Lerp(start, target, k);
@@ -203,73 +237,92 @@ note.StartCoroutine(CoMove(rt, new Vector2(x, hy), noteTravelTime));
     }
 
     // ユーザーのタップから呼ぶ判定
-public void TryHit(int lane)
-{
-    if (lane < 0 || lane >= laneQueues.Length) return;
-
-    // null掃除
-    while (laneQueues[lane].Count > 0 && laneQueues[lane].Peek() == null)
-        laneQueues[lane].Dequeue();
-
-    if (laneQueues[lane].Count == 0)
+    public void TryHit(int lane)
     {
-        RegisterJudge("Miss", 0, resetCombo: true);
-        return;
+        if (lane < 0 || lane >= laneQueues.Length)
+            return;
+
+        // null掃除
+        while (laneQueues[lane].Count > 0 && laneQueues[lane].Peek() == null)
+            laneQueues[lane].Dequeue();
+
+        if (laneQueues[lane].Count == 0)
+        {
+            RegisterJudge("Miss", 0, resetCombo: true);
+            return;
+        }
+
+        var head = laneQueues[lane].Peek();
+        if (head == null)
+        {
+            laneQueues[lane].Dequeue();
+            RegisterJudge("Miss", 0, resetCombo: true);
+            return;
+        }
+
+        double t = GetSongTime();
+        double diff = Mathf.Abs((float)(t - head.time));
+
+        if (diff <= perfect)
+            Hit(head, lane, "Perfect", 1000);
+        else if (diff <= great)
+            Hit(head, lane, "Great", 700);
+        else if (diff <= good)
+            Hit(head, lane, "Good", 400);
+        else if (diff <= bad)
+            Hit(head, lane, "Bad", 100, resetCombo: true);
+        else
+            RegisterJudge("Miss", 0, resetCombo: true);
     }
 
-    var head = laneQueues[lane].Peek();
-    if (head == null)
+    void Hit(Note head, int lane, string label, int add, bool resetCombo = false)
     {
+        // 先にDequeue
         laneQueues[lane].Dequeue();
-        RegisterJudge("Miss", 0, resetCombo: true);
-        return;
+        // それからDestroy（すでに消えていても安全）
+        var go = head ? head.gameObject : null;
+        if (go)
+            Destroy(go);
+
+        RegisterJudge(label, add, resetCombo);
     }
 
-    double t = GetSongTime();
-    double diff = Mathf.Abs((float)(t - head.time));
+    void RegisterJudge(string label, int add, bool resetCombo = false)
+    {
+        score += add;
+        if (resetCombo)
+            combo = 0;
+        else
+            combo++;
 
-    if      (diff <= perfect) Hit(head, lane, "Perfect", 1000);
-    else if (diff <= great  ) Hit(head, lane, "Great",    700);
-    else if (diff <= good   ) Hit(head, lane, "Good",     400);
-    else if (diff <= bad    ) Hit(head, lane, "Bad",      100, resetCombo:true);
-    else                      RegisterJudge("Miss",        0,   resetCombo:true);
-}
+        maxCombo = Mathf.Max(maxCombo, combo);
+        if (judgeText)
+            judgeText.text = label;
+        UpdateUI();
+    }
 
-void Hit(Note head, int lane, string label, int add, bool resetCombo = false)
-{
-    // 先にDequeue
-    laneQueues[lane].Dequeue();
-    // それからDestroy（すでに消えていても安全）
-    var go = head ? head.gameObject : null;
-    if (go) Destroy(go);
+    void UpdateUI()
+    {
+        if (scoreText)
+            scoreText.text = $"Score: {score}";
+        if (comboText)
+            comboText.text = combo > 0 ? $"Combo: {combo}" : "";
+    }
 
-    RegisterJudge(label, add, resetCombo);
-}
-
-
-void RegisterJudge(string label, int add, bool resetCombo = false)
-{
-    score += add;
-    if (resetCombo) combo = 0;
-    else combo++;
-
-    maxCombo = Mathf.Max(maxCombo, combo);
-    if (judgeText) judgeText.text = label;
-    UpdateUI();
-}
-
-void UpdateUI()
-{
-    if (scoreText) scoreText.text = $"Score: {score}";
-    if (comboText) comboText.text = combo > 0 ? $"Combo: {combo}" : "";
-}
-
-// 便利ヘルパー（HitJudgeから参照する場合）
+    // 便利ヘルパー（HitJudgeから参照する場合）
     public double GetSongTime()
     {
         if (audioSource != null && audioSource.clip != null)
             return Math.Max(0, AudioSettings.dspTime - dspStartTime);
         else
             return Math.Max(0, Time.time - fallbackStartTime);
+    }
+
+    public void PlayLaneSE(int lane)
+    {
+        if (audioSource != null && lane < seClips.Length && seClips[lane] != null)
+        {
+            audioSource.PlayOneShot(seClips[lane]);
+        }
     }
 }

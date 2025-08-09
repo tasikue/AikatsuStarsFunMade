@@ -25,4 +25,5 @@ Thumbs.db
 *.unityproj
 
 # assets
-Assets/Audio/*
+Assets/Audio/*.wav
+Assets/Sounds/*.mp3
