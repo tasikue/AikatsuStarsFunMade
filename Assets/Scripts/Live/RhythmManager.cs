@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using System.Linq;
 using TMPro;
+
 
 [Serializable]
 public class NoteData { public float time; public int lane; }
@@ -32,30 +34,30 @@ public class RhythmManager : MonoBehaviour
     private int spawnIndex = 0;
     private double dspStartTime;
     private float fallbackStartTime; // クリップが無い時の保険
-    private Queue<Note>[] laneQueues = new Queue<Note>[4];
+    private Queue<Note>[] laneQueues = new Queue<Note>[3]; // ← 3レーン
 
     // 判定ウィンドウ（秒）
-[Header("Judge Windows (sec)")]
-public float perfect = 0.050f;
-public float great   = 0.090f;
-public float good    = 0.140f;
-public float bad     = 0.200f; // これを超えたらMiss
+    [Header("Judge Windows (sec)")]
+    public float perfect = 0.050f;
+    public float great   = 0.090f;
+    public float good    = 0.140f;
+    public float bad     = 0.200f; // これを超えたらMiss
 
-// スコアUI（Text でも TextMeshProUGUIでもOK）
-[Header("UI")]
-public TextMeshProUGUI scoreText;
-public TextMeshProUGUI comboText;
-public TextMeshProUGUI judgeText;
+    // スコアUI（Text でも TextMeshProUGUIでもOK）
+    [Header("UI")]
+    public TextMeshProUGUI scoreText;
+    public TextMeshProUGUI comboText;
+    public TextMeshProUGUI judgeText;
 
-// スコア関連
-private int score = 0;
-private int combo = 0;
-private int maxCombo = 0;
+    // スコア関連
+    private int score = 0;
+    private int combo = 0;
+    private int maxCombo = 0;
 
     public double GetStartDsp()
-{
+    {
     return dspStartTime;
-}
+    }
 
     void Start()
     {
@@ -135,6 +137,13 @@ private int maxCombo = 0;
     }
 }
 
+// キーボード操作
+if (Keyboard.current != null) {
+    if (Keyboard.current.aKey.wasPressedThisFrame) TryHit(0);
+    if (Keyboard.current.sKey.wasPressedThisFrame) TryHit(1);
+    if (Keyboard.current.dKey.wasPressedThisFrame) TryHit(2);
+}
+
     }
 
     void SpawnNote(NoteData n)
@@ -150,7 +159,8 @@ private int maxCombo = 0;
         var rect = playArea.rect;
     float laneWidth = rect.width;
     float xStart = -laneWidth * 0.5f;
-    float x = xStart + (n.lane + 0.5f) * (laneWidth / 4f);
+    int laneCount = laneQueues.Length; // 3
+    float x = xStart + (n.lane + 0.5f) * (laneWidth / laneCount);
 
     float sy = (spawnY != 0f) ? spawnY : rect.height * 0.5f - 20f;
     float hy = (hitY   != 0f) ? hitY   : -rect.height * 0.5f + 200f;

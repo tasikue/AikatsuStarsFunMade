@@ -22,7 +22,14 @@ public Color parfectColor = new Color(1f, 0f, 0f, 1f);
     void Awake()
     {
         img = GetComponent<Image>();
-        if (img) img.color = baseColor;
+    if (!img) return;
+    // レーンカラー例
+    Color[] laneColors = {
+        new Color(1f, 0.5f, 0.8f, 1f), // lane0 ピンク
+        new Color(1f, 0.9f, 0.2f, 1f), // lane1 黄
+        new Color(0.4f, 0.7f, 1f, 1f)  // lane2 青
+    };
+    img.color = lane < laneColors.Length ? laneColors[lane] : Color.white;
     }
 
     void Update()
