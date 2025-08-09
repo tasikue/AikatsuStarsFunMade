@@ -4,9 +4,10 @@ using UnityEngine.EventSystems;
 public class HitJudge : MonoBehaviour, IPointerDownHandler
 {
     public RhythmManager rhythm;
+    public int lane = 0; // 0〜3をInspectorで設定
+
     public void OnPointerDown(PointerEventData eventData)
     {
-        double now = AudioSettings.dspTime - rhythm.GetStartDsp();
-        Debug.Log($"Tap at {now:F3}s");
+        if (rhythm != null) rhythm.TryHit(lane);
     }
 }

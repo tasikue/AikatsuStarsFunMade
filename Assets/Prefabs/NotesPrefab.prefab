@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 276010934886472575}
   - component: {fileID: 2022532982342092498}
   - component: {fileID: 3477672848845183891}
+  - component: {fileID: 4907718979853795584}
   m_Layer: 5
   m_Name: NotesPrefab
   m_TagString: Untagged
@@ -75,3 +76,17 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &4907718979853795584
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8928643164997197631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afd333dcaf7832042ad8a3aa64dfce1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lane: 0
+  time: 0

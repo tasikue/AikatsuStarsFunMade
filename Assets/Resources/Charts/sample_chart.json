@@ -3,10 +3,10 @@
     "bpm": 150,
     "offset": 0.00,
     "notes": [
-      { "time": 1.000, "lane": 0 },
-      { "time": 1.500, "lane": 1 },
-      { "time": 2.000, "lane": 2 },
-      { "time": 2.500, "lane": 3 }
+      { "time": 3.000, "lane": 0 },
+      { "time": 4.500, "lane": 1 },
+      { "time": 5.000, "lane": 2 },
+      { "time": 6.500, "lane": 3 }
     ]
 }
   
