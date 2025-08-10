@@ -29,20 +29,17 @@ public class RhythmManager : MonoBehaviour
     [Header("Refs")]
     public AudioSource audioSource;
     public VideoPlayer videoPlayer;
-    public RectTransform playArea; // Canvas内 ノーツを流す親
+    public AudioSource seSource; // 効果音再生用
+    public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
     public GameObject notePrefab;
+    public RectTransform playArea; // Canvas内 ノーツを流す親
+    public TargetPulse[] targets = new TargetPulse[3]; // Inspectorで Target0~2 を割当
+    public JudgeFeedback judgeFX;
 
     [Header("Scroll")]
     public float spawnY = 400f; // 出現位置Y（上）
     public float hitY = -200f; // 判定ラインY（下）
     public float noteTravelTime = 1.0f; // 出現→判定ラインまでの所要時間(秒)
-
-    private ChartData chart;
-    private int spawnIndex = 0;
-    private double dspStartTime;
-    private float fallbackStartTime; // クリップが無い時の保険
-    private Queue<Note>[] laneQueues = new Queue<Note>[3]; // ← 3レーン
-    private bool _videoSyncActive = false; // 映像同期フラグ
 
     // 判定ウィンドウ（秒）
     [Header("Judge Windows (sec)")]
@@ -57,16 +54,17 @@ public class RhythmManager : MonoBehaviour
     public TextMeshProUGUI comboText;
     public TextMeshProUGUI judgeText;
 
+    private ChartData chart;
+    private int spawnIndex = 0;
+    private double dspStartTime;
+    private float fallbackStartTime; // クリップが無い時の保険
+    private Queue<Note>[] laneQueues = new Queue<Note>[3]; // ← 3レーン
+    private bool _videoSyncActive = false; // 映像同期フラグ
+
     // スコア関連
     private int score = 0;
     private int combo = 0;
     private int maxCombo = 0;
-
-    public AudioSource seSource; // 効果音再生用
-    public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
-
-    public JudgeFeedback judgeFX;
-    public TargetPulse[] targets = new TargetPulse[3]; // Inspectorで Target0~2 を割当
 
     public double GetStartDsp()
     {
@@ -366,5 +364,12 @@ public class RhythmManager : MonoBehaviour
         {
             seSource.PlayOneShot(seClips[lane]);
         }
+    }
+
+    // 縦横切替後に再計算が必要なとき用のフック（今は空でOK）
+    public void RefreshLayoutRuntime()
+    {
+        // もし内部で PlayArea のサイズをキャッシュしているなら、ここで再計算する処理を書く
+        // 例）laneWidth = playArea.rect.width; など
     }
 }
