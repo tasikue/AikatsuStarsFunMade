@@ -61,160 +61,18 @@ public partial class RhythmManager : MonoBehaviour
     public TextMeshProUGUI comboText;
     public TextMeshProUGUI judgeText;
 
-    // スコア関連
-    private int score = 0;
-    private int combo = 0;
-    private int maxCombo = 0;
-
     void Start()
     {
         LoadChartAndInit(); // 譜面読み込み
         SetVideoAndAudio(); // 曲と動画のセット
-
-        UpdateUI();
+        InitJudgeQueues(3); // 判定・スコアの初期化
     }
 
     void Update()
     {
         TickVideoSync(); // ビデオ同期
         TickSpawn(); // スポーン更新
-
-        // 遅延Miss処理：先頭が判定窓を超えたらMiss
-        for (int lane = 0; lane < laneQueues.Length; lane++)
-        {
-            // 先に null 化された要素を掃除
-            while (laneQueues[lane].Count > 0 && laneQueues[lane].Peek() == null)
-                laneQueues[lane].Dequeue();
-
-            if (laneQueues[lane].Count == 0)
-                continue;
-
-            var head = laneQueues[lane].Peek();
-            if (head == null)
-            {
-                laneQueues[lane].Dequeue();
-                continue;
-            } // 念のため
-
-            double diff = GetSongTime() - head.time;
-
-            if (diff > bad) // 遅すぎ → Miss
-            {
-                // 先にキューから外す → それからDestroy
-                laneQueues[lane].Dequeue();
-                var go = head.gameObject;
-                if (go)
-                    Destroy(go);
-
-                RegisterJudge("Miss", 0, resetCombo: true);
-            }
-        }
-
-        // キーボードでの判定
-        if (Keyboard.current != null) // 新Input Systemの場合
-        {
-            if (Keyboard.current.aKey.wasPressedThisFrame)
-            {
-                TryHit(0);
-                PlayLaneSE(0);
-            }
-            if (Keyboard.current.sKey.wasPressedThisFrame)
-            {
-                TryHit(1);
-                PlayLaneSE(1);
-            }
-            if (Keyboard.current.dKey.wasPressedThisFrame)
-            {
-                TryHit(2);
-                PlayLaneSE(2);
-            }
-        }
-    }
-
-    // ユーザーのタップから呼ぶ判定
-    public void TryHit(int lane)
-    {
-        if (lane < 0 || lane >= laneQueues.Length)
-            return;
-
-        // null掃除
-        while (laneQueues[lane].Count > 0 && laneQueues[lane].Peek() == null)
-            laneQueues[lane].Dequeue();
-
-        if (laneQueues[lane].Count == 0)
-        {
-            RegisterJudge("Miss", 0, resetCombo: true);
-            return;
-        }
-
-        var head = laneQueues[lane].Peek();
-        if (head == null)
-        {
-            laneQueues[lane].Dequeue();
-            RegisterJudge("Miss", 0, resetCombo: true);
-            return;
-        }
-
-        double t = GetSongTime();
-        double diff = Mathf.Abs((float)(t - head.time));
-
-        if (diff <= perfect)
-            Hit(head, lane, "Perfect", 1000);
-        else if (diff <= great)
-            Hit(head, lane, "Great", 700);
-        else if (diff <= good)
-            Hit(head, lane, "Good", 400);
-        else if (diff <= bad)
-            Hit(head, lane, "Bad", 100, resetCombo: true);
-        else
-            RegisterJudge("Miss", 0, resetCombo: true);
-    }
-
-    void Hit(Note head, int lane, string label, int add, bool resetCombo = false)
-    {
-        laneQueues[lane].Dequeue();
-        var go = head ? head.gameObject : null;
-        if (go)
-            Destroy(go);
-
-        if (lane >= 0 && lane < targets.Length && targets[lane])
-            targets[lane].Pulse(); // ← 追加
-        RegisterJudge(label, add, resetCombo);
-    }
-
-    void RegisterJudge(string label, int add, bool resetCombo = false)
-    {
-        score += add;
-        combo = resetCombo ? 0 : combo + 1;
-        maxCombo = Mathf.Max(maxCombo, combo);
-        if (judgeText)
-            judgeText.text = label;
-        if (judgeFX)
-            judgeFX.Show(label); // ← 追加
-
-        UpdateUI();
-    }
-
-    void UpdateUI()
-    {
-        if (scoreText)
-            scoreText.text = $"Score: {score}";
-        if (comboText)
-            comboText.text = combo > 0 ? $"Combo: {combo}" : "";
-    }
-
-    public void PlayLaneSE(int lane)
-    {
-        if (seSource != null && lane < seClips.Length && seClips[lane] != null)
-        {
-            seSource.PlayOneShot(seClips[lane]);
-        }
-    }
-
-    // 縦横切替後に再計算が必要なとき用のフック（今は空でOK）
-    public void RefreshLayoutRuntime()
-    {
-        // もし内部で PlayArea のサイズをキャッシュしているなら、ここで再計算する処理を書く
-        // 例）laneWidth = playArea.rect.width; など
+        TickLateMiss(); // 判定：ミス処理
+        TickKeyboard(); // キーボードの判定
     }
 }

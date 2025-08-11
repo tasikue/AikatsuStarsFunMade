@@ -2,12 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /*
- * リズムマネージャー: 動画・音楽関連
+ * リズムマネージャー: スポーン
  */
 public partial class RhythmManager
 {
     private ChartData chart; // 譜面データ
-    private Queue<Note>[] laneQueues = new Queue<Note>[3]; // ← 3レーン
     private int spawnIndex = 0;
 
     /* 譜面の読み込み */
@@ -36,10 +35,6 @@ public partial class RhythmManager
         // 時間順に並び替え
         chart.notes.Sort((a, b) => a.time.CompareTo(b.time));
         Debug.Log($"[Rhythm] 読み込みOK: notes={chart.notes.Count}, offset={chart.offset}");
-
-        // レーンの初期化
-        for (int i = 0; i < laneQueues.Length; i++)
-            laneQueues[i] = new Queue<Note>();
     }
 
     /* スポーン生成 */
@@ -91,8 +86,7 @@ public partial class RhythmManager
         note.time = n.time;
         note.Init(this);
 
-        // レーンキューへ
-        laneQueues[n.lane].Enqueue(note);
+        EnqueueNote(note); // 判定側へ
 
         // 落下開始：note側でStartCoroutine（Destroyと同時に止まる）
         note.StartCoroutine(CoMove(rt, new Vector2(x, hy), noteTravelTime));

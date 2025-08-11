@@ -116,4 +116,13 @@ public partial class RhythmManager
     {
         return dspStartTime;
     }
+
+    // SE を鳴らす
+    public void PlayLaneSE(int lane)
+    {
+        if (seSource != null && lane < seClips.Length && seClips[lane] != null)
+        {
+            seSource.PlayOneShot(seClips[lane]);
+        }
+    }
 }
