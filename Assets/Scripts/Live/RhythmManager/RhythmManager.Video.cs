@@ -3,6 +3,9 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.Video;
 
+/*
+ * リズムマネージャー: 動画・音楽関連
+ */
 public partial class RhythmManager
 {
     // 変数
@@ -12,7 +15,7 @@ public partial class RhythmManager
     private bool _videoBooting = false; // 再生を実行したかのフラグ
 
     /* 動画と音楽の初期準備まとめ */
-    void setVideoAndAudio()
+    void SetVideoAndAudio()
     {
         // 再生開始時刻
         dspStartTime = AudioSettings.dspTime + audioDelay;
@@ -86,13 +89,11 @@ public partial class RhythmManager
     }
 
     /* 外部時間で動画を同期駆動 */
-    void videoSync()
+    void TickVideoSync()
     {
         if (_videoSyncActive && videoPlayer)
         {
-            Debug.Log("Video Sync");
-            double t = AudioSettings.dspTime - dspStartTime;
-            videoPlayer.externalReferenceTime = Math.Max(0.0, t);
+            videoPlayer.externalReferenceTime = GetSongTime();
         }
     }
 

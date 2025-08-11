@@ -96,7 +96,7 @@ public partial class RhythmManager : MonoBehaviour
         Debug.Log($"[Rhythm] 読み込みOK: notes={chart.notes.Count}, offset={chart.offset}");
 
         // 曲と動画のセット
-        setVideoAndAudio();
+        SetVideoAndAudio();
 
         for (int i = 0; i < laneQueues.Length; i++)
             laneQueues[i] = new Queue<Note>();
@@ -107,6 +107,9 @@ public partial class RhythmManager : MonoBehaviour
     void Update()
     {
         double songTime = GetSongTime();
+
+        // ビデオ同期
+        TickVideoSync();
 
         // 生成ループ(既存)
         while (chart != null && spawnIndex < chart.notes.Count)
@@ -152,9 +155,6 @@ public partial class RhythmManager : MonoBehaviour
                 RegisterJudge("Miss", 0, resetCombo: true);
             }
         }
-
-        // ビデオ同期
-        videoSync();
 
         // キーボードでの判定
         if (Keyboard.current != null) // 新Input Systemの場合
