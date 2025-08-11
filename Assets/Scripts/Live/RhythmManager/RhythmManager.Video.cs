@@ -100,7 +100,7 @@ public partial class RhythmManager
     // 曲の時間を取得する便利ヘルパー（HitJudgeから参照する場合）
     public double GetSongTime()
     {
-        if (seSource != null && seSource.clip != null)
+        if (audioSource && audioSource.clip)
         {
             double t = AudioSettings.dspTime - dspStartTime;
             return Math.Max(0.0, t);

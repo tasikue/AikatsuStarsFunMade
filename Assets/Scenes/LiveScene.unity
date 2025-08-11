@@ -1709,7 +1709,7 @@ MonoBehaviour:
   judgeFX: {fileID: 0}
   videoPlayer: {fileID: 280289612}
   audioSource: {fileID: 964812338}
-  audioDelay: 0.2
+  audioDelay: 4
   seSource: {fileID: 1902782737}
   seClips:
   - {fileID: 8300000, guid: 7c5d0638b638b8e41b97395fe115a2a8, type: 3}
