@@ -24,17 +24,24 @@ public class ChartData
     public List<NoteData> notes;
 }
 
-public class RhythmManager : MonoBehaviour
+public partial class RhythmManager : MonoBehaviour
 {
     [Header("Refs")]
-    public AudioSource audioSource;
-    public VideoPlayer videoPlayer;
-    public AudioSource seSource; // 効果音再生用
-    public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
     public GameObject notePrefab;
     public RectTransform playArea; // Canvas内 ノーツを流す親
     public TargetPulse[] targets = new TargetPulse[3]; // Inspectorで Target0~2 を割当
     public JudgeFeedback judgeFX;
+
+    [Header("Movie")]
+    public VideoPlayer videoPlayer;
+
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public double audioDelay;
+
+    [Header("Sound")]
+    public AudioSource seSource; // 効果音再生用
+    public AudioClip[] seClips = new AudioClip[3]; // レーンごとのSE
 
     [Header("Scroll")]
     public float spawnY = 400f; // 出現位置Y（上）
@@ -56,20 +63,13 @@ public class RhythmManager : MonoBehaviour
 
     private ChartData chart;
     private int spawnIndex = 0;
-    private double dspStartTime;
-    private float fallbackStartTime; // クリップが無い時の保険
+
     private Queue<Note>[] laneQueues = new Queue<Note>[3]; // ← 3レーン
-    private bool _videoSyncActive = false; // 映像同期フラグ
 
     // スコア関連
     private int score = 0;
     private int combo = 0;
     private int maxCombo = 0;
-
-    public double GetStartDsp()
-    {
-        return dspStartTime;
-    }
 
     void Start()
     {
@@ -95,61 +95,13 @@ public class RhythmManager : MonoBehaviour
         chart.notes.Sort((a, b) => a.time.CompareTo(b.time));
         Debug.Log($"[Rhythm] 読み込みOK: notes={chart.notes.Count}, offset={chart.offset}");
 
-        // 再生準備（AudioClipが無い場合はフォールバック）
-        // ① 動画の準備開始
-        if (videoPlayer)
-            videoPlayer.Prepare();
-
-        // ② 再生開始時刻を決定（0.2秒後など）
-        double startDelay = 0.2;
-        dspStartTime = AudioSettings.dspTime + startDelay;
-
-        // ③ BGMを高精度に予約再生
-        if (audioSource && audioSource.clip)
-        {
-            audioSource.PlayScheduled(dspStartTime);
-            Debug.Log("[Rhythm] Audio scheduled start at " + dspStartTime.ToString("F3"));
-        }
-        else
-        {
-            fallbackStartTime = Time.time + (float)startDelay;
-            Debug.LogWarning("[Rhythm] AudioClip 未設定。Time.time ベースで進行します（暫定）");
-        }
-
-        // ④ 動画も同時にスタートするコルーチン
-        StartCoroutine(CoStartVideoAtDSP(dspStartTime));
+        // 曲と動画のセット
+        setVideoAndAudio();
 
         for (int i = 0; i < laneQueues.Length; i++)
             laneQueues[i] = new Queue<Note>();
 
         UpdateUI();
-    }
-
-    IEnumerator CoStartVideoAtDSP(double dspTime)
-    {
-        if (videoPlayer)
-        {
-            while (!videoPlayer.isPrepared)
-                yield return null;
-            videoPlayer.time = 0.0; // 念のため先頭へ
-            videoPlayer.Play(); // External Timeでも必要
-        }
-
-        // DSP開始まで待機
-        while (AudioSettings.dspTime < dspTime)
-            yield return null;
-
-        // 同期駆動フラグON
-        _videoSyncActive = true;
-    }
-
-    // 便利ヘルパー（HitJudgeから参照する場合）
-    public double GetSongTime()
-    {
-        if (seSource != null && seSource.clip != null)
-            return Math.Max(0, AudioSettings.dspTime - dspStartTime);
-        else
-            return Math.Max(0, Time.time - fallbackStartTime);
     }
 
     void Update()
@@ -201,12 +153,8 @@ public class RhythmManager : MonoBehaviour
             }
         }
 
-        // 外部時間で動画を同期駆動
-        if (_videoSyncActive && videoPlayer)
-        {
-            double t = AudioSettings.dspTime - dspStartTime;
-            videoPlayer.externalReferenceTime = Mathf.Max(0f, (float)t);
-        }
+        // ビデオ同期
+        videoSync();
 
         // キーボードでの判定
         if (Keyboard.current != null) // 新Input Systemの場合
@@ -265,6 +213,7 @@ public class RhythmManager : MonoBehaviour
         note.StartCoroutine(CoMove(rt, new Vector2(x, hy), noteTravelTime));
     }
 
+    /* 指定座標までアニメーション移動させるコルーチン */
     System.Collections.IEnumerator CoMove(RectTransform rt, Vector2 target, float duration)
     {
         if (!rt)

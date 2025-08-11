@@ -28,3 +28,4 @@ Thumbs.db
 Assets/Audio/*.wav
 Assets/Sounds/*.mp3
 Assets/Movies/*.mp4
+Assets/Movies/*
